@@ -1,0 +1,56 @@
+pub fn square_str_to_index(s: &str) -> Option<u8> {
+    if s.len() != 2 {
+        return None;
+    }
+
+    let mut chars = s.chars();
+    let file_char = chars.next()?;
+    let rank_char = chars.next()?;
+
+    let file = match file_char {
+        'a'..='h' => file_char as u8 - 'a' as u8,
+        _ => return None,
+    };
+
+    let rank = match rank_char {
+        '1'..='8' => rank_char as u8 - '1' as u8,
+        _ => return None,
+    };
+
+    Some(rank * 8 + file)
+}
+
+pub fn index_to_square_str(index: u8) -> Option<String> {
+    match index {
+        0..64 => (),
+        _ => return None,
+    };
+
+    let mut s = String::with_capacity(2);
+
+    s.push((index % 8 + 'a' as u8) as char);
+    s.push((index / 8 + '1' as u8) as char);
+
+    Some(s)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_square_str_to_index() {
+        assert_eq!(square_str_to_index("lmao"), None);
+        assert_eq!(square_str_to_index("h3"), Some(23));
+        assert_eq!(square_str_to_index("a1"), Some(0));
+        assert_eq!(square_str_to_index("h8"), Some(63));
+    }
+
+    #[test]
+    fn test_index_to_square_str() {
+        assert_eq!(index_to_square_str(69), None);
+        assert_eq!(index_to_square_str(23), Some("h3".to_string()));
+        assert_eq!(index_to_square_str(0), Some("a1".to_string()));
+        assert_eq!(index_to_square_str(63), Some("h8".to_string()))
+    }
+}
