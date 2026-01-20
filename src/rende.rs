@@ -1,5 +1,5 @@
+use crate::Color;
 use crate::bitboards::BitBoards;
-use crate::boardstate::Color;
 
 pub fn print_bitboard(bitboard: &BitBoards, perspective: Color) {
     let mut board_arr = [[' '; 8]; 8];
@@ -30,7 +30,7 @@ pub fn print_bitboard(bitboard: &BitBoards, perspective: Color) {
             for (rank, name) in board_arr.iter().rev().zip((1..=8).rev()) {
                 print!("{name} ");
 
-                for square in rank.iter().rev() {
+                for square in rank.iter() {
                     print!("[{}]", square);
                 }
 
@@ -41,7 +41,7 @@ pub fn print_bitboard(bitboard: &BitBoards, perspective: Color) {
             for (rank, name) in board_arr.iter().zip(1..=8) {
                 print!("{name} ");
 
-                for square in rank.iter().rev() {
+                for square in rank.iter() {
                     print!("[{}]", square);
                 }
 
