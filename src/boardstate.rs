@@ -1,5 +1,7 @@
 use crate::bitboards::bitboard_constants::bitboard_indices::*;
 use crate::bitboards::{BitBoardCreationError, BitBoards};
+use crate::util::*;
+use crate::{Color, Piece};
 
 mod boardstate_constants {
     pub const PROJECTED_GAME_LENGTH: usize = 40;
@@ -11,12 +13,6 @@ mod boardstate_constants {
 }
 
 use boardstate_constants::*;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Color {
-    Black,
-    White,
-}
 
 #[derive(Debug)]
 pub struct CurrentBoardState {
@@ -61,7 +57,7 @@ pub enum FenStringError {
     BadTurnCount,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BoardState {
     position: BitBoards,
     pub side_to_move: Color,
@@ -116,15 +112,15 @@ impl BoardState {
             ));
         };
 
-        if position.split("/").count() != 8 {
+        if position.split('/').count() != 8 {
             return Err(BoardStateCreationError::BadFenString(
                 FenStringError::BadPosition,
             ));
         }
 
-        let mut ranks = position.split("/");
+        let mut ranks = position.split('/').rev();
         let mut unchecked_bitboards = [[0; 6]; 2];
-        let mut bit = 1 << 63;
+        let mut bit = 1;
 
         while let Some(rank) = ranks.next() {
             if rank.chars().count() > 8 {
@@ -147,7 +143,7 @@ impl BoardState {
                             }
                         };
 
-                        bit >>= shift;
+                        bit <<= shift;
                         continue;
                     }
                     'p' => unchecked_bitboards[BLACK][PAWN] |= bit,
@@ -169,7 +165,7 @@ impl BoardState {
                     }
                 };
 
-                bit >>= 1;
+                bit <<= 1;
             }
         }
 
@@ -221,53 +217,7 @@ impl BoardState {
             ));
         };
 
-        if en_passant.chars().count() > 2 {
-            return Err(BoardStateCreationError::BadFenString(
-                FenStringError::BadEnPassant,
-            ));
-        }
-
-        let mut en_passant_square = 0;
-
-        {
-            let mut chars = en_passant.chars();
-
-            let Some(file) = chars.next() else {
-                return Err(BoardStateCreationError::BadFenString(
-                    FenStringError::BadEnPassant,
-                ));
-            };
-
-            match file {
-                '-' => en_passant_square = 0,
-                'a'..='h' => en_passant_square |= (file as u8 - ('a' as u8 - 1)) << 4,
-                _ => {
-                    return Err(BoardStateCreationError::BadFenString(
-                        FenStringError::BadEnPassant,
-                    ));
-                }
-            };
-
-            let rank = chars.next();
-
-            match rank {
-                Some('1'..='8') => {
-                    let Some(digit) = rank.unwrap_or('1').to_digit(10) else {
-                        return Err(BoardStateCreationError::BadFenString(
-                            FenStringError::BadEnPassant,
-                        ));
-                    };
-
-                    en_passant_square |= digit as u8;
-                }
-                None if en_passant_square == 0 => (),
-                _ => {
-                    return Err(BoardStateCreationError::BadFenString(
-                        FenStringError::BadEnPassant,
-                    ));
-                }
-            }
-        }
+        let en_passant_square = square_str_to_index(en_passant);
 
         let Some(half_move_counter) = chunks.next() else {
             return Err(BoardStateCreationError::BadFenString(
@@ -306,12 +256,6 @@ impl BoardState {
             }
         };
 
-        let en_passant_square = if en_passant_square == 0 {
-            None
-        } else {
-            Some(en_passant_square)
-        };
-
         let position = BitBoards::new(unchecked_bitboards)?;
 
         Ok(Self::new(
@@ -324,12 +268,52 @@ impl BoardState {
         ))
     }
 
+    pub fn to_fen(&self) -> String {
+        let mut fen: Vec<String> = Vec::with_capacity(6);
+        let mut board_str = String::with_capacity(70);
+
+        let bitboard = self.position.all_boards();
+
+        for shift in (0..64).rev().step_by(8) {
+            let mut empty_spaces: u8 = 0;
+
+            for offset in 0..8 {
+                let bit = 1 << (shift >> offset);
+
+                if bitboard & bit == 0 {
+                    empty_spaces += 1;
+                    continue;
+                }
+
+                if empty_spaces > 0 {
+                    board_str.push_str(&empty_spaces.to_string());
+                    empty_spaces = 0;
+                }
+            }
+        }
+
+        fen.join(" ")
+    }
+    /*
+        fn bitboard_to_fen(&self) -> String {
+            let mut ranks = Vec::with_capacity(8);
+
+
+
+            ranks.join("/")
+        }
+    */
+
     pub fn get_position(&self) -> &BitBoards {
         &self.position
     }
 
     pub fn from(current: &CurrentBoardState) -> Self {
         current.board_state.clone()
+    }
+
+    fn can_castle_any(&self) -> bool {
+        self.castling_rights != 0
     }
 
     pub fn can_castle_kingside_white(&self) -> bool {
@@ -377,5 +361,44 @@ impl BoardHistory {
 
     pub fn pop(&mut self) -> Option<BoardState> {
         self.vec.pop()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::bitboards::bitboard_constants::starting_positions::*;
+
+    use super::*;
+
+    #[test]
+    fn test_from_fen() {
+        let fen = "rnbq1bnr/ppppkppp/8/4p3/4P3/8/PPPPKPPP/RNBQ1BNR w - - 2 5";
+
+        let mut position = [[0; 6]; 2];
+
+        position[WHITE][PAWN] = 0b00010000_00000000_11101111 << 8;
+        position[WHITE][ROOK] = DEFAULT_ROOKS_WHITE;
+        position[WHITE][KNIGHT] = DEFAULT_KNIGHTS_WHITE;
+        position[WHITE][BISHOP] = DEFAULT_BISHOPS_WHITE;
+        position[WHITE][QUEEN] = DEFAULT_QUEENS_WHITE;
+        position[WHITE][KING] = 0b00010000 << 8;
+
+        position[BLACK][PAWN] = 0b11101111_00000000_00010000 << 32;
+        position[BLACK][ROOK] = DEFAULT_ROOKS_BLACK;
+        position[BLACK][KNIGHT] = DEFAULT_KNIGHTS_BLACK;
+        position[BLACK][BISHOP] = DEFAULT_BISHOPS_BLACK;
+        position[BLACK][QUEEN] = DEFAULT_QUEENS_BLACK;
+        position[BLACK][KING] = 0b00010000 << 48;
+
+        let board_state = BoardState::new(
+            Color::White,
+            BitBoards::new(position).unwrap(),
+            5,
+            2,
+            0,
+            None,
+        );
+
+        assert_eq!(BoardState::from_fen(fen).unwrap(), board_state);
     }
 }
