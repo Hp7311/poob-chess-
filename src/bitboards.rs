@@ -1,30 +1,18 @@
 // Constants for initializing and interacting with bitboards
 pub mod bitboard_constants {
     pub mod starting_positions {
-        pub const DEFAULT_PAWNS_WHITE: u64 =
-            0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000;
-        pub const DEFAULT_PAWNS_BLACK: u64 =
-            0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000;
-        pub const DEFAULT_ROOKS_WHITE: u64 =
-            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001;
-        pub const DEFAULT_ROOKS_BLACK: u64 =
-            0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
-        pub const DEFAULT_KNIGHTS_WHITE: u64 =
-            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010;
-        pub const DEFAULT_KNIGHTS_BLACK: u64 =
-            0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
-        pub const DEFAULT_BISHOPS_WHITE: u64 =
-            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100;
-        pub const DEFAULT_BISHOPS_BLACK: u64 =
-            0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
-        pub const DEFAULT_QUEENS_WHITE: u64 =
-            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000;
-        pub const DEFAULT_QUEENS_BLACK: u64 =
-            0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
-        pub const DEFAULT_KING_WHITE: u64 =
-            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000;
-        pub const DEFAULT_KING_BLACK: u64 =
-            0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+        pub const DEFAULT_PAWNS_WHITE: u64 = 0b11111111 << 8;
+        pub const DEFAULT_PAWNS_BLACK: u64 = 0b11111111 << 48;
+        pub const DEFAULT_ROOKS_WHITE: u64 = 0b10000001;
+        pub const DEFAULT_ROOKS_BLACK: u64 = 0b10000001 << 56;
+        pub const DEFAULT_KNIGHTS_WHITE: u64 = 0b01000010;
+        pub const DEFAULT_KNIGHTS_BLACK: u64 = 0b01000010 << 56;
+        pub const DEFAULT_BISHOPS_WHITE: u64 = 0b00100100;
+        pub const DEFAULT_BISHOPS_BLACK: u64 = 0b00100100 << 56;
+        pub const DEFAULT_QUEENS_WHITE: u64 = 0b00001000;
+        pub const DEFAULT_QUEENS_BLACK: u64 = 0b00001000 << 56;
+        pub const DEFAULT_KING_WHITE: u64 = 0b00010000;
+        pub const DEFAULT_KING_BLACK: u64 = 0b00010000 << 56;
     }
 
     pub mod bitboard_indices {
@@ -68,10 +56,6 @@ pub struct BitBoards {
 
 impl BitBoards {
     /// Returns a collection of bitboards in the default starting position.
-    ///
-    /// # Panics
-    /// Calls `expect` on the `Result` returned by `new`. This should theoretically
-    /// never panic, but who knows.
     pub fn default() -> Self {
         let mut default_boards = [[0; 6], [0; 6]];
 
@@ -89,7 +73,9 @@ impl BitBoards {
         default_boards[BLACK][QUEEN] = DEFAULT_QUEENS_BLACK;
         default_boards[BLACK][KING] = DEFAULT_KING_BLACK;
 
-        Self::new(default_boards).expect("Invalid board configuration")
+        Self {
+            boards: default_boards,
+        }
     }
 
     pub fn new(boards: [[u64; 6]; 2]) -> Result<Self, BitBoardCreationError> {
@@ -244,51 +230,51 @@ impl BitBoards {
             return None;
         };
 
-        if self.boards[WHITE][PAWN] & bitboard == 1 {
+        if self.boards[WHITE][PAWN] & bitboard != 0 {
             return Some((Color::White, Piece::Pawn));
         }
 
-        if self.boards[WHITE][KNIGHT] & bitboard == 1 {
+        if self.boards[WHITE][KNIGHT] & bitboard != 0 {
             return Some((Color::White, Piece::Knight));
         }
 
-        if self.boards[WHITE][BISHOP] & bitboard == 1 {
+        if self.boards[WHITE][BISHOP] & bitboard != 0 {
             return Some((Color::White, Piece::Bishop));
         }
 
-        if self.boards[WHITE][ROOK] & bitboard == 1 {
+        if self.boards[WHITE][ROOK] & bitboard != 0 {
             return Some((Color::White, Piece::Rook));
         }
 
-        if self.boards[WHITE][QUEEN] & bitboard == 1 {
+        if self.boards[WHITE][QUEEN] & bitboard != 0 {
             return Some((Color::White, Piece::Queen));
         }
 
-        if self.boards[WHITE][KING] & bitboard == 1 {
+        if self.boards[WHITE][KING] & bitboard != 0 {
             return Some((Color::White, Piece::King));
         }
 
-        if self.boards[BLACK][PAWN] & bitboard == 1 {
+        if self.boards[BLACK][PAWN] & bitboard != 0 {
             return Some((Color::Black, Piece::Pawn));
         }
 
-        if self.boards[BLACK][KNIGHT] & bitboard == 1 {
+        if self.boards[BLACK][KNIGHT] & bitboard != 0 {
             return Some((Color::Black, Piece::Knight));
         }
 
-        if self.boards[BLACK][BISHOP] & bitboard == 1 {
+        if self.boards[BLACK][BISHOP] & bitboard != 0 {
             return Some((Color::Black, Piece::Bishop));
         }
 
-        if self.boards[BLACK][ROOK] & bitboard == 1 {
+        if self.boards[BLACK][ROOK] & bitboard != 0 {
             return Some((Color::Black, Piece::Rook));
         }
 
-        if self.boards[BLACK][QUEEN] & bitboard == 1 {
+        if self.boards[BLACK][QUEEN] & bitboard != 0 {
             return Some((Color::Black, Piece::Queen));
         }
 
-        if self.boards[BLACK][KING] & bitboard == 1 {
+        if self.boards[BLACK][KING] & bitboard != 0 {
             return Some((Color::Black, Piece::King));
         }
 
@@ -325,5 +311,15 @@ mod tests {
             Err(BitBoardConversionError::BadBitboard)
         );
         assert_eq!(BitBoards::bitboard_to_square(1 << 53), Ok(53));
+    }
+
+    #[test]
+    fn test_piece_at() {
+        let board = BitBoards::default();
+
+        assert_eq!(board.piece_at(69), None);
+        assert_eq!(board.piece_at(27), None);
+        assert_eq!(board.piece_at(0), Some((Color::White, Piece::Rook)));
+        assert_eq!(board.piece_at(60), Some((Color::Black, Piece::King)));
     }
 }
