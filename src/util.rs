@@ -34,6 +34,15 @@ pub fn index_to_square_str(index: u8) -> Option<String> {
     Some(s)
 }
 
+pub fn checked_square_u8_to_square_u16(square_u8: u8) -> Option<u16> {
+    match square_u8 {
+        0..64 => (),
+        _ => return None,
+    };
+
+    Some(square_u8 as u16)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
