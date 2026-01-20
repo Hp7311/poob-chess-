@@ -268,52 +268,111 @@ impl BoardState {
         ))
     }
 
+    /// Returns a FEN string of this board state.
+    /// # Panics
+    /// Currently calls `expect` on `index_to_square_str`. This should not fail,
+    /// as the board state representation should always be valid.
     pub fn to_fen(&self) -> String {
         let mut fen: Vec<String> = Vec::with_capacity(6);
-        let mut board_str = String::with_capacity(70);
 
-        let bitboard = self.position.all_boards();
+        fen.push(self.bitboard_to_fen());
 
-        for shift in (0..64).rev().step_by(8) {
-            let mut empty_spaces: u8 = 0;
+        let side_char = match self.side_to_move {
+            Color::White => 'w',
+            Color::Black => 'b',
+        };
 
-            for offset in 0..8 {
-                let bit = 1 << (shift >> offset);
+        fen.push(side_char.to_string());
 
-                if bitboard & bit == 0 {
-                    empty_spaces += 1;
-                    continue;
-                }
+        let castling_rights = if self.castling_rights == 0 {
+            '-'.to_string()
+        } else {
+            let mut castle_str = String::with_capacity(4);
 
-                if empty_spaces > 0 {
-                    board_str.push_str(&empty_spaces.to_string());
-                    empty_spaces = 0;
-                }
+            if self.can_castle_kingside_white() {
+                castle_str.push('K');
             }
-        }
+
+            if self.can_castle_queenside_white() {
+                castle_str.push('Q');
+            }
+
+            if self.can_castle_kingside_black() {
+                castle_str.push('k');
+            }
+
+            if self.can_castle_queenside_black() {
+                castle_str.push('q');
+            }
+
+            castle_str
+        };
+
+        fen.push(castling_rights);
+
+        let en_passant = match self.en_passant_square {
+            Some(square) => index_to_square_str(square).expect("Invalid square"),
+            None => '-'.to_string(),
+        };
+
+        fen.push(en_passant);
+
+        fen.push(self.fifty_move_rule.to_string());
+        fen.push(self.turn_count.to_string());
 
         fen.join(" ")
     }
-    /*
-        fn bitboard_to_fen(&self) -> String {
-            let mut ranks = Vec::with_capacity(8);
 
+    pub fn bitboard_to_fen(&self) -> String {
+        let mut ranks = vec![String::with_capacity(8); 8];
 
+        for (rank, rank_square) in ranks.iter_mut().rev().zip((0..64).step_by(8)) {
+            let mut empty_squares = 0;
 
-            ranks.join("/")
+            for file in 0..8 {
+                let square = rank_square + file;
+
+                if let Some((color, piece)) = self.position.piece_at(square) {
+                    if empty_squares > 0 {
+                        rank.push_str(&empty_squares.to_string());
+                        empty_squares = 0;
+                    }
+
+                    let c = match (color, piece) {
+                        (Color::White, Piece::Pawn) => 'P',
+                        (Color::White, Piece::Rook) => 'R',
+                        (Color::White, Piece::Knight) => 'N',
+                        (Color::White, Piece::Bishop) => 'B',
+                        (Color::White, Piece::Queen) => 'Q',
+                        (Color::White, Piece::King) => 'K',
+                        (Color::Black, Piece::Pawn) => 'p',
+                        (Color::Black, Piece::Rook) => 'r',
+                        (Color::Black, Piece::Knight) => 'n',
+                        (Color::Black, Piece::Bishop) => 'b',
+                        (Color::Black, Piece::Queen) => 'q',
+                        (Color::Black, Piece::King) => 'k',
+                    };
+
+                    rank.push(c);
+                } else {
+                    empty_squares += 1;
+                }
+            }
+
+            if empty_squares > 0 {
+                rank.push_str(&empty_squares.to_string());
+            }
         }
-    */
+
+        ranks.join("/")
+    }
 
     pub fn get_position(&self) -> &BitBoards {
         &self.position
     }
 
-    pub fn from(current: &CurrentBoardState) -> Self {
+    pub fn from_current(current: &CurrentBoardState) -> Self {
         current.board_state.clone()
-    }
-
-    fn can_castle_any(&self) -> bool {
-        self.castling_rights != 0
     }
 
     pub fn can_castle_kingside_white(&self) -> bool {
@@ -400,5 +459,26 @@ mod tests {
         );
 
         assert_eq!(BoardState::from_fen(fen).unwrap(), board_state);
+    }
+
+    #[test]
+    fn test_bitboard_to_fen() {
+        let fen = "rnbq1bnr/ppppkppp/8/4p3/4P3/8/PPPPKPPP/RNBQ1BNR w - - 2 5";
+
+        let board_state = BoardState::from_fen(fen).unwrap();
+
+        assert_eq!(
+            board_state.bitboard_to_fen(),
+            "rnbq1bnr/ppppkppp/8/4p3/4P3/8/PPPPKPPP/RNBQ1BNR".to_string()
+        );
+    }
+
+    #[test]
+    fn test_to_fen() {
+        let fen = "rnbq1bnr/ppppkppp/8/4p3/4P3/8/PPPPKPPP/RNBQ1BNR w - - 2 5";
+
+        let board_state = BoardState::from_fen(fen).unwrap();
+
+        assert_eq!(board_state.to_fen(), fen.to_string());
     }
 }
